@@ -101,22 +101,44 @@ func Fit(buf []byte, o ImageOptions) (Image, error) {
 		return Image{}, NewError("Missing required params: height, width", BadRequest)
 	}
 
-	dims, err := bimg.Size(buf)
+	metadata, err := bimg.Metadata(buf)
 	if err != nil {
 		return Image{}, err
 	}
 
-	// if input ratio > output ratio
+	dims := metadata.Size
+
+	// metadata.Orientation
+	// 0: no EXIF orientation
+	// 1: CW 0
+	// 2: CW 0, flip horizontal
+	// 3: CW 180
+	// 4: CW 180, flip horizontal
+	// 5: CW 90, flip horizontal
+	// 6: CW 270
+	// 7: CW 270, flip horizontal
+	// 8: CW 90
+
 	// (calculation multiplied through by denominators to avoid float division)
 	if dims.Width*o.Height > o.Width*dims.Height {
 		// constrained by width
 		if dims.Width != 0 {
-			o.Height = o.Width * dims.Height / dims.Width
+			if metadata.Orientation <= 4 {
+				o.Height = o.Width * dims.Height / dims.Width
+			} else {
+				// switch Width/Height
+				o.Width = o.Height * dims.Height / dims.Width
+			}
 		}
 	} else {
 		// constrained by height
 		if dims.Height != 0 {
-			o.Width = o.Height * dims.Width / dims.Height
+			if metadata.Orientation <= 4 {
+				o.Width = o.Height * dims.Width / dims.Height
+			} else {
+				// switch Width/Height
+				o.Height = o.Width * dims.Width / dims.Height
+			}
 		}
 	}
 
